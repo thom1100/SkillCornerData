@@ -24,7 +24,7 @@ Le projet se concentre sur les premières divisions (et, lorsqu'elles sont dispo
 
 ```bash
 # Créer un environnement virtuel
-python -m venv venv
+python3.12 -m venv venv
 
 # Activer l'environnement virtuel
 source venv/bin/activate  # Sur Linux/Mac
