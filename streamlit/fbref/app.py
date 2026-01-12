@@ -1,12 +1,10 @@
-# app.py
-import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
-from sklearn.metrics.pairwise import cosine_similarity
+import streamlit as st
 
-# Assumes df has columns: ['player_name', 'team_name', 'position', 'position_group', feature1,...,featureN]
-df = pd.read_csv("../data/all_leagues_merged_final_df.csv")
+from utils import *
+
+df = pd.read_csv("../../data/all_leagues_merged_final_df.csv")
 
 aggregation_dict = {
     # ⏱️ Temps de Jeu -> SOMME
@@ -131,72 +129,71 @@ aggregation_dict = {
     'age': lambda x: x.iloc[-1],
 }
 
-# --- Compute similarity matrix once ---
-def compute_similarity(df, feature_cols):
+# # --- Compute similarity matrix once ---
+# def compute_similarity(df, feature_cols):
 
-    clean_features = df[feature_cols].dropna(axis=1)
+#     clean_features = df[feature_cols].dropna(axis=1)
 
-    df = df.copy()
+#     df = df.copy()
 
-    sim_matrix = cosine_similarity(clean_features)
-    sim_df = pd.DataFrame(sim_matrix, index=df['player'],
-                          columns=df['player'])
+#     sim_matrix = cosine_similarity(clean_features)
+#     sim_df = pd.DataFrame(sim_matrix, index=df['player'],
+#                           columns=df['player'])
 
-    return sim_df, df, clean_features.columns
+#     return sim_df, df, clean_features.columns
 
 
-def feature_contributions(df, player1, player2, feature_cols):
-    # Extraire les vecteurs
-    v1 = df.loc[df['player'] == player1, feature_cols].values.flatten()
-    v2 = df.loc[df['player'] == player2, feature_cols].values.flatten()
+# def feature_contributions(df, player1, player2, feature_cols):
+#     # Extraire les vecteurs
+#     v1 = df.loc[df['player'] == player1, feature_cols].values.flatten()
+#     v2 = df.loc[df['player'] == player2, feature_cols].values.flatten()
 
-    # Calculer la contribution brute
-    contributions = v1 * v2
+#     # Calculer la contribution brute
+#     contributions = v1 * v2
 
-    # Normalisation (comme dans la cosine similarity)
-    norm_factor = np.linalg.norm(v1) * np.linalg.norm(v2)
-    contributions_normalized = contributions / norm_factor
+#     # Normalisation (comme dans la cosine similarity)
+#     norm_factor = np.linalg.norm(v1) * np.linalg.norm(v2)
+#     contributions_normalized = contributions / norm_factor
 
-    # Mettre dans un DataFrame
-    contrib_df = pd.DataFrame({
-        'feature': feature_cols,
-        'contribution': contributions_normalized
-    }).sort_values(by='contribution', ascending=False)
+#     # Mettre dans un DataFrame
+#     contrib_df = pd.DataFrame({
+#         'feature': feature_cols,
+#         'contribution': contributions_normalized
+#     }).sort_values(by='contribution', ascending=False)
 
-    return contrib_df
+#     return contrib_df
 
-# --- Function to get top similar players ---
-def get_similar_players(df, similarity_df, player_name, top_n=5, filter_cols = None):
-    if player_name not in similarity_df.index:
-        return pd.DataFrame()  # empty
+# # --- Function to get top similar players ---
+# def get_similar_players(df, similarity_df, player_name, top_n=5, filter_cols = None):
+#     if player_name not in similarity_df.index:
+#         return pd.DataFrame()  # empty
 
-    sims = similarity_df.loc[player_name].drop(player_name, errors="ignore")
-    filtered_ids = set(df["player"])
-    for filter_col in filter_cols:
+#     sims = similarity_df.loc[player_name].drop(player_name, errors="ignore")
+#     filtered_ids = set(df["player"])
+#     for filter_col in filter_cols:
 
-        if filter_col is None or filter_col not in df.columns:
-            continue
+#         if filter_col is None or filter_col not in df.columns:
+#             continue
 
-        else:
-            if filter_col == "Valeur marchande (euros)":
-                continue
-            else:
-                target_value = df.loc[df['player'] == player_name, filter_col].values[0]
-                current_filtered = set(df.loc[df[filter_col] == target_value, 'player'])
+#         else:
+#             if filter_col == "Valeur marchande (euros)":
+#                 continue
+#             else:
+#                 target_value = df.loc[df['player'] == player_name, filter_col].values[0]
+#                 current_filtered = set(df.loc[df[filter_col] == target_value, 'player'])
 
-        # Intersection progressive
-        filtered_ids &= current_filtered
+#         # Intersection progressive
+#         filtered_ids &= current_filtered
 
-        sims = sims.loc[sims.index.intersection(filtered_ids)]
+#         sims = sims.loc[sims.index.intersection(filtered_ids)]
 
-    top_similar = sims.sort_values(ascending=False).head(top_n)
+#     top_similar = sims.sort_values(ascending=False).head(top_n)
 
-    player_info = df[['player', 'pos', 'nation', 'Valeur marchande (euros)',
-                      'team', 'age', 'Performance G+A', 'Expected xG', 'Playing Time MP']].set_index('player')
-    result = player_info.loc[top_similar.index].assign(similarity=top_similar.values)
-    return result.reset_index(drop=False), sims
+#     player_info = df[['player', 'pos', 'nation', 'Valeur marchande (euros)',
+#                       'team', 'age', 'Performance G+A', 'Expected xG', 'Playing Time MP']].set_index('player')
+#     result = player_info.loc[top_similar.index].assign(similarity=top_similar.values)
+#     return result.reset_index(drop=False), sims
 
-# --- Streamlit App ---
 st.title("Player Similarity Explorer")
 
 # Step 1: select season (multiplie choice possible)
@@ -277,7 +274,7 @@ else :
 player_name = st.selectbox("Select a player:", df['player'].unique())
 
 # Step 3: optional filter
-filter_options = st.multiselect("Optional filter:", [None, "pos", "team", "Valeur marchande (euros)"], default= None)
+filter_options = st.multiselect("Optional filter:", ["pos", "team", "Valeur marchande (euros)"], default= "pos")
 
 if "Valeur marchande (euros)" in filter_options:
     target_value = st.slider ("Valeur marchande cible : ",
@@ -311,7 +308,7 @@ if "team" in filter_options:
 top_n = st.slider("Number of similar players to show:", min_value=1, max_value=20, value=5)
 
 
-similarity_df, df, feature_cols = compute_similarity(df,feature_cols)
+similarity_df = compute_similarity(df,feature_cols)
 st.write(df[df["player"] == player_name])
 
 
@@ -363,7 +360,7 @@ if st.button("Find similar players"):
         x='contribution',
         y='feature',
         orientation='h',
-        title=f"Top 10 features contributing to similarity between {player_name} and {similar_players.iloc[0]["player"]}",
+        title=f"Top 10 features contributing to similarity with {player_name}",
         labels={'contribution': 'Normalized contribution', 'feature': 'Feature'},
         text='contribution'
     )
